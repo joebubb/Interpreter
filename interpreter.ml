@@ -16,10 +16,12 @@
 open Str 
 
 let str_regex = regexp "\"[a-zA-z]*\"[ ]*$"
-let int_regex = regexp "-?[1-9]+[0-9]*[ ]*$"
+let int_regex = regexp "-?[0-9]+[ ]*$"
 
 let str_is_str s = string_match str_regex s 0 
 let str_is_int s = string_match int_regex s 0 
+
+let str_is_bool s = (s="0" || s="1")
 
 (*Writing a line to a file*)
 let write_file_example (file_path: string) : unit =
@@ -75,6 +77,8 @@ type com =
   | Quit
   | Crash
   | SoftCrash
+  | And 
+  | Or 
 
 type status = Ok | Err 
 
@@ -130,7 +134,17 @@ let quit o =
 
 let crash o = 
   Crash
-  
+
+let and_constr o = 
+  match o with 
+  | None -> And
+  | Some(o) -> Crash
+
+let or_constr o = 
+  match o with 
+  | None -> Or 
+  | Some(o) -> Crash 
+
 let str_to_com_constructor s = 
   match s with 
   | "Push" -> push 
@@ -143,6 +157,8 @@ let str_to_com_constructor s =
   | "Neg" -> neg 
   | "Concat" -> concat
   | "Quit" -> quit 
+  | "And" -> and_constr
+  | "Or" -> or_constr
   | s -> crash 
 
 let const_of_str s = 
@@ -209,6 +225,11 @@ let both_strs f s =
               | Int(c) -> false
               | Undefined -> false
               | String(c) -> true 
+
+let both_bools f s = 
+  let a = extract_const f in 
+  let b = extract_const s in 
+  (str_is_bool a) && (str_is_bool b)
 
 let push_to_stack c stack = (Ok, c :: stack)
 let pop_from_stack stack = 
@@ -288,6 +309,19 @@ let concat_stack stack =
       (Err, stack) 
 
 
+let and_stack stack = 
+  if stack_len stack < 2 then (Err, stack) else 
+    match top_two stack with 
+    | (f, s) -> 
+      if both_bools f s then 
+        if (extract_const f = "1") && (extract_const s = "1") then 
+          (Ok, Int("1")::(List.tl (List.tl stack)))
+        else
+          (Ok, Int("0")::(List.tl (List.tl stack))) 
+      else 
+        (Err, stack)
+
+
 let rec interpret stack output comms = 
   match comms with 
   | [] -> write_stack stack output
@@ -305,6 +339,7 @@ let rec interpret stack output comms =
     | Quit -> write_stack stack output 
     | Crash -> write_err output 
     | SoftCrash -> write_nothing 
+    | And -> let result = and_stack stack in process_result result output t
 
 and process_result r output comms = 
     match r with 
