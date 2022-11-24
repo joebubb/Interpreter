@@ -298,7 +298,7 @@ let pop_env (e: env): result =
 let push_env (str: string) (e: env): result = 
   if str_is_int str then 
     match e with 
-    | (s, g, l, p, o) -> (Ok, new_env ((Int(str))::s) g l p o)
+    | (s, g, l, p, o) -> (Ok, new_env (Int(str)::s) g l p o)
   else if str_is_str str then  
     match e with 
     | (s, g, l, p, o) -> (Ok, new_env ((String(str))::s) g l p o)
